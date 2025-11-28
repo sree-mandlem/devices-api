@@ -22,17 +22,35 @@
 * Java 21
 * Spring Boot 4.x
 * Maven
-* H2 in memory db for dev
+* Postgres DB backed with JPA, Flyway for migration
 * JUnit Jupiter and Mockito for tests
 * Lombok and MapStruct for code generation
-### Planned
-* Postgres for non dev
-* Flyway for migration
-* Docker with `docker-compose` to containerize
-* Test Containers to test
 * Spring OpenAPI for documentation
+* Test Containers to test
+### Planned
+* Dockerize with `docker-compose` to containerize
 
 ### Testing Strategy
 * **Unit Tests** for coverage and validate business rules on service layer
 * **Integration Tests** with **mockmvc** for controller layer
 * **Test Containers** to test db migrations and repository tests
+
+## Deployment
+### Local
+* Use docker to start postgres(change the details if needed)
+```
+docker run -d \
+  --name devices-postgres \
+  -e POSTGRES_DB=devices \
+  -e POSTGRES_USER=devices_user \
+  -e POSTGRES_PASSWORD=changeme \
+  -p 5432:5432 \
+  -v devices_pgdata:/var/lib/postgresql/data \
+  postgres:16
+
+```
+* Run `mvn spring-boot:run`
+* OpenAPI documentation 
+  * The UI is available at `http://localhost:8080/swagger-ui/index.html`
+  * The API spec is available at `http://localhost:8080/v3/api-docs`
+
