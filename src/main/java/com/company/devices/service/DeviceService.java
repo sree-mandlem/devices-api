@@ -3,8 +3,9 @@ package com.company.devices.service;
 import com.company.devices.api.dto.*;
 import com.company.devices.domain.Device;
 import com.company.devices.domain.DeviceState;
+import com.company.devices.domain.exception.DeviceNotFoundException;
+import com.company.devices.domain.exception.InvalidDeviceOperationException;
 import com.company.devices.repository.DeviceRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +43,7 @@ public class DeviceService {
 
         if (device.getState() == DeviceState.IN_USE) {
             log.warn("Cannot delete device that is currently IN_USE");
-            throw new IllegalStateException("Cannot delete device that is currently IN_USE");
+            throw new InvalidDeviceOperationException("Cannot delete device that is currently IN_USE");
         }
 
         repository.delete(device);
@@ -89,7 +90,7 @@ public class DeviceService {
 
     private Device findDeviceOrThrow(Long id) {
         return repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Device not found with id: " + id));
+                .orElseThrow(() -> new DeviceNotFoundException(id));
     }
 
     private void enforceNameAndBrandUpdateRules(Device device, String newName, String newBrand) {
@@ -97,7 +98,7 @@ public class DeviceService {
             boolean nameChanged = !device.getName().equals(newName);
             boolean brandChanged = !device.getBrand().equals(newBrand);
             if (nameChanged || brandChanged) {
-                throw new IllegalStateException("Name and brand cannot be updated when device is IN_USE");
+                throw new InvalidDeviceOperationException("Name and brand cannot be updated when device is IN_USE");
             }
         }
     }

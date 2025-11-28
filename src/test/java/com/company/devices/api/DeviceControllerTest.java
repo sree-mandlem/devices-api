@@ -2,8 +2,9 @@ package com.company.devices.api;
 
 import com.company.devices.api.dto.*;
 import com.company.devices.domain.DeviceState;
+import com.company.devices.domain.exception.DeviceNotFoundException;
+import com.company.devices.domain.exception.InvalidDeviceOperationException;
 import com.company.devices.service.DeviceService;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -95,9 +96,9 @@ class DeviceControllerTest {
     @DisplayName("GET /api/v1/devices/{id} should return 404 when device is not found")
     void getById_shouldReturnNotFound() throws Exception {
         long id = 99L;
-        var message = "Retrieval failed. Entity not found with id: " + id;
+        var message = "Device not found with id: " + id;
         when(deviceService.getById(id))
-                .thenThrow(new EntityNotFoundException(message));
+                .thenThrow(new DeviceNotFoundException(id));
 
         mockMvc.perform(get("/api/v1/devices/{id}", id))
                 .andExpect(status().isNotFound())
@@ -117,11 +118,11 @@ class DeviceControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/devices/{id} should return 400 when service throws IllegalStateException")
+    @DisplayName("DELETE /api/v1/devices/{id} should return 400 when service throws InvalidDeviceOperationException")
     void delete_shouldReturnBadRequestOnIllegalState() throws Exception {
         long id = 4L;
         String message = "Deletion failed. Cannot delete device that is currently IN_USE";
-        doThrow(new IllegalStateException(message))
+        doThrow(new InvalidDeviceOperationException(message))
                 .when(deviceService).delete(eq(id));
 
         mockMvc.perform(delete("/api/v1/devices/{id}", id))
@@ -174,9 +175,9 @@ class DeviceControllerTest {
     void update_shouldReturnNotFound() throws Exception {
         long id = 404L;
         var request = new DeviceUpdateRequest("Updated", "BrandX", DeviceState.AVAILABLE);
-        var message = "Retrieval failed. Entity not found with id: " + id;
+        var message = "Device not found with id: " + id;
         when(deviceService.update(eq(id), any(DeviceUpdateRequest.class)))
-                .thenThrow(new EntityNotFoundException(message));
+                .thenThrow(new DeviceNotFoundException(id));
 
         mockMvc.perform(put("/api/v1/devices/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -195,7 +196,7 @@ class DeviceControllerTest {
         var request = new DeviceUpdateRequest("New name", "BrandX", DeviceState.IN_USE);
         var message = "Name and brand cannot be updated when device is IN_USE";
         when(deviceService.update(eq(id), any(DeviceUpdateRequest.class)))
-                .thenThrow(new IllegalStateException(message));
+                .thenThrow(new InvalidDeviceOperationException(message));
 
         mockMvc.perform(put("/api/v1/devices/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -232,9 +233,9 @@ class DeviceControllerTest {
     void patch_shouldReturnNotFound() throws Exception {
         long id = 404L;
         var request = new DevicePatchRequest("Updated", "BrandX", DeviceState.AVAILABLE);
-        var message = "Retrieval failed. Entity not found with id: " + id;
+        var message = "Device not found with id: " + id;
         when(deviceService.patch(eq(id), any(DevicePatchRequest.class)))
-                .thenThrow(new EntityNotFoundException(message));
+                .thenThrow(new DeviceNotFoundException(id));
 
         mockMvc.perform(patch("/api/v1/devices/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -253,7 +254,7 @@ class DeviceControllerTest {
         var request = new DevicePatchRequest("New name", "BrandX", DeviceState.IN_USE);
         var message = "Name and brand cannot be updated when device is IN_USE";
         when(deviceService.patch(eq(id), any(DevicePatchRequest.class)))
-                .thenThrow(new IllegalStateException(message));
+                .thenThrow(new InvalidDeviceOperationException(message));
 
         mockMvc.perform(patch("/api/v1/devices/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)

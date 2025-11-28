@@ -1,7 +1,8 @@
 package com.company.devices.api;
 
 import com.company.devices.api.dto.ErrorResponse;
-import jakarta.persistence.EntityNotFoundException;
+import com.company.devices.domain.exception.DeviceNotFoundException;
+import com.company.devices.domain.exception.InvalidDeviceOperationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -13,18 +14,18 @@ import static org.springframework.http.HttpStatus.*;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(EntityNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(EntityNotFoundException ex) {
+    @ExceptionHandler(DeviceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(DeviceNotFoundException ex) {
         return buildErrorResponse(NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ErrorResponse> handleInvalid(IllegalStateException ex) {
+    @ExceptionHandler(InvalidDeviceOperationException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidOperation(InvalidDeviceOperationException ex) {
         return buildErrorResponse(BAD_REQUEST, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationFailure(IllegalStateException ex) {
+    public ResponseEntity<ErrorResponse> handleValidationFailure(MethodArgumentNotValidException ex) {
         return buildErrorResponse(BAD_REQUEST, ex.getMessage());
     }
 

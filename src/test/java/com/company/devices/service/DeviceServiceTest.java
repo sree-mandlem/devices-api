@@ -2,8 +2,9 @@ package com.company.devices.service;
 
 import com.company.devices.api.dto.*;
 import com.company.devices.domain.Device;
+import com.company.devices.domain.exception.DeviceNotFoundException;
+import com.company.devices.domain.exception.InvalidDeviceOperationException;
 import com.company.devices.repository.DeviceRepository;
-import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -68,26 +69,26 @@ class DeviceServiceTest {
     }
 
     @Test
-    @DisplayName("getById() should throw EntityNotFoundException when device is missing")
+    @DisplayName("getById() should throw when device is missing")
     void getById_shouldThrowWhenNotFound() {
         Long id = 404L;
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getById(id))
-                .isInstanceOf(EntityNotFoundException.class)
+                .isInstanceOf(DeviceNotFoundException.class)
                 .hasMessage("Device not found with id: " + id);
         verify(repository).findById(id);
         verifyNoInteractions(mapper);
     }
 
     @Test
-    @DisplayName("delete() should throw EntityNotFoundException when device is missing")
+    @DisplayName("delete() should throw when device is missing")
     void delete_shouldThrowWhenNotFound() {
         Long id = 404L;
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.delete(id))
-                .isInstanceOf(EntityNotFoundException.class)
+                .isInstanceOf(DeviceNotFoundException.class)
                 .hasMessage("Device not found with id: " + id);
         verify(repository).findById(id);
         verify(repository, never()).delete(any());
@@ -107,14 +108,14 @@ class DeviceServiceTest {
     }
 
     @Test
-    @DisplayName("delete() should throw IllegalStateException when device is IN_USE")
+    @DisplayName("delete() should throw when device is IN_USE")
     void delete_shouldThrowWhenInUse() {
         Long id = 5L;
         var device = Device.builder().id(id).name("iPhone").brand("Apple").state(IN_USE).build();
         when(repository.findById(id)).thenReturn(Optional.of(device));
 
         assertThatThrownBy(() -> service.delete(id))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(InvalidDeviceOperationException.class)
                 .hasMessageContaining("Cannot delete device that is currently IN_USE");
         verify(repository).findById(id);
         verify(repository, never()).delete(any());
@@ -161,14 +162,14 @@ class DeviceServiceTest {
     }
 
     @Test
-    @DisplayName("update() should throw EntityNotFoundException when entity is missing")
+    @DisplayName("update() should throw when entity is missing")
     void update_shouldThrowWhenNotFound() {
         Long id = 404L;
         var request = new DeviceUpdateRequest("Name", "Brand", AVAILABLE);
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.update(id, request))
-                .isInstanceOf(EntityNotFoundException.class)
+                .isInstanceOf(DeviceNotFoundException.class)
                 .hasMessage("Device not found with id: " + id);
         verify(repository).findById(id);
         verifyNoInteractions(mapper);
@@ -195,7 +196,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    @DisplayName("update() should throw IllegalStateException when name or brand changes while IN_USE")
+    @DisplayName("update() should throw when name or brand changes while IN_USE")
     void update_shouldThrowWhenChangingNameOrBrandWhileInUse() {
         Long id = 400L;
         var existing = Device.builder().id(id).name("Locked name").brand("Locked brand").state(IN_USE).build();
@@ -204,7 +205,7 @@ class DeviceServiceTest {
         when(repository.findById(id)).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.update(id, request))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(InvalidDeviceOperationException.class)
                 .hasMessage("Name and brand cannot be updated when device is IN_USE");
         verify(repository).findById(id);
         verifyNoInteractions(mapper);
@@ -261,7 +262,7 @@ class DeviceServiceTest {
         when(repository.findById(id)).thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() -> service.patch(id, request))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(InvalidDeviceOperationException.class)
                 .hasMessage("Name and brand cannot be updated when device is IN_USE");
         assertThat(existing.getName()).isEqualTo("Name");
         assertThat(existing.getBrand()).isEqualTo("Brand");
@@ -293,13 +294,13 @@ class DeviceServiceTest {
     }
 
     @Test
-    @DisplayName("patch should throw EntityNotFoundException when device does not exist")
+    @DisplayName("patch should throw when device does not exist")
     void patch_shouldThrowWhenDeviceNotFound() {
         var id = 999L;
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.patch(id, new DevicePatchRequest(null, null, null)))
-                .isInstanceOf(EntityNotFoundException.class)
+                .isInstanceOf(DeviceNotFoundException.class)
                 .hasMessage("Device not found with id: " + id);
         verify(repository).findById(id);
         verifyNoMoreInteractions(repository);
