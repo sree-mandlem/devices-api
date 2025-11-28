@@ -1,6 +1,9 @@
 package com.company.devices.service;
 
-import com.company.devices.api.dto.*;
+import com.company.devices.api.dto.DeviceCreateRequest;
+import com.company.devices.api.dto.DevicePatchRequest;
+import com.company.devices.api.dto.DeviceResponse;
+import com.company.devices.api.dto.DeviceUpdateRequest;
 import com.company.devices.domain.Device;
 import com.company.devices.domain.DeviceState;
 import com.company.devices.domain.exception.DeviceNotFoundException;
@@ -9,6 +12,8 @@ import com.company.devices.repository.DeviceRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @Transactional
@@ -68,10 +73,10 @@ public class DeviceService {
 
     public DeviceResponse patch(Long id, DevicePatchRequest request) {
         log.info("Patching device by id: {}, request:{}", id, request);
-        Device device = findDeviceOrThrow(id);
+        var device = findDeviceOrThrow(id);
 
-        String newName = request.name() != null ? request.name() : device.getName();
-        String newBrand = request.brand() != null ? request.brand() : device.getBrand();
+        var newName = request.name() != null ? request.name() : device.getName();
+        var newBrand = request.brand() != null ? request.brand() : device.getBrand();
 
         enforceNameAndBrandUpdateRules(device, newName, newBrand);
 
@@ -88,6 +93,19 @@ public class DeviceService {
         return mapper.toResponse(device);
     }
 
+    public List<DeviceResponse> getByBrand(String brand) {
+        log.info("Retrieving devices by brand: {}", brand);
+
+        if (brand == null || brand.isBlank()) {
+            log.warn("Brand cannot be empty");
+            throw new IllegalArgumentException("Brand cannot be empty");
+        }
+
+        return repository.findByBrandIgnoreCase(brand).stream()
+                .map(mapper::toResponse)
+                .toList();
+    }
+
     private Device findDeviceOrThrow(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new DeviceNotFoundException(id));
@@ -102,4 +120,5 @@ public class DeviceService {
             }
         }
     }
+
 }

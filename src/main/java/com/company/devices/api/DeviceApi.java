@@ -8,8 +8,11 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RequestMapping("/api/v1/devices")
 public interface DeviceApi {
@@ -90,4 +93,16 @@ public interface DeviceApi {
             @RequestBody(description = "Payload to update an existing device", required = true)
             @Valid @org.springframework.web.bind.annotation.RequestBody DevicePatchRequest request
     );
+
+    @Operation(summary = "Fetch devices filtered by brand")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Devices retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = DeviceResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping
+    ResponseEntity<List<DeviceResponse>> getByBrand(@NotNull @RequestParam("brand") String brand);
 }

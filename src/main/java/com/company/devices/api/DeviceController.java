@@ -1,10 +1,16 @@
 package com.company.devices.api;
 
-import com.company.devices.api.dto.*;
+import com.company.devices.api.dto.DeviceCreateRequest;
+import com.company.devices.api.dto.DevicePatchRequest;
+import com.company.devices.api.dto.DeviceResponse;
+import com.company.devices.api.dto.DeviceUpdateRequest;
 import com.company.devices.service.DeviceService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 import static org.springframework.http.HttpStatus.CREATED;
 
@@ -20,13 +26,13 @@ public class DeviceController implements DeviceApi {
 
     @Override
     public ResponseEntity<DeviceResponse> create(@Valid @RequestBody DeviceCreateRequest request) {
-        DeviceResponse body = service.create(request);
+        var body = service.create(request);
         return ResponseEntity.status(CREATED).body(body);
     }
 
     @Override
     public ResponseEntity<DeviceResponse> getById(@PathVariable Long id) {
-        DeviceResponse body = service.getById(id);
+        var body = service.getById(id);
         return ResponseEntity.ok(body);
     }
 
@@ -41,7 +47,7 @@ public class DeviceController implements DeviceApi {
             @PathVariable Long id,
             @Valid @RequestBody DeviceUpdateRequest request
     ) {
-        DeviceResponse body = service.update(id, request);
+        var body = service.update(id, request);
         return ResponseEntity.ok(body);
     }
 
@@ -50,7 +56,13 @@ public class DeviceController implements DeviceApi {
             @PathVariable Long id,
             @Valid @RequestBody DevicePatchRequest request
     ) {
-        DeviceResponse body = service.patch(id, request);
+        var body = service.patch(id, request);
         return ResponseEntity.ok(body);
+    }
+
+    @Override
+    public ResponseEntity<List<DeviceResponse>> getByBrand(@NotNull @RequestParam("brand") String brand) {
+        var devicesByBrand = service.getByBrand(brand);
+        return ResponseEntity.ok(devicesByBrand);
     }
 }

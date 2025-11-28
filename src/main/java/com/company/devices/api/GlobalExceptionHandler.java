@@ -6,6 +6,7 @@ import com.company.devices.domain.exception.InvalidDeviceOperationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -24,7 +25,7 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(BAD_REQUEST, ex.getMessage());
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ExceptionHandler(value = {MethodArgumentNotValidException.class, MissingServletRequestParameterException.class})
     public ResponseEntity<ErrorResponse> handleValidationFailure(MethodArgumentNotValidException ex) {
         return buildErrorResponse(BAD_REQUEST, ex.getMessage());
     }
@@ -35,7 +36,7 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponse> buildErrorResponse(HttpStatus status, String message) {
-        ErrorResponse body = ErrorResponse.builder()
+        var body = ErrorResponse.builder()
                 .status(status.value())
                 .error(status.getReasonPhrase())
                 .message(message)

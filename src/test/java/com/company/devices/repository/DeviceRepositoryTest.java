@@ -1,0 +1,100 @@
+package com.company.devices.repository;
+
+import com.company.devices.domain.Device;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.util.List;
+
+import static com.company.devices.domain.DeviceState.AVAILABLE;
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+@Testcontainers
+@ActiveProfiles("test")
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class DeviceRepositoryTest {
+
+    @Container
+    static final PostgreSQLContainer<?> postgres =
+            new PostgreSQLContainer<>("postgres:16-alpine")
+                    .withDatabaseName("devices_db")
+                    .withUsername("test")
+                    .withPassword("test");
+
+    @DynamicPropertySource
+    static void configureDataSource(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop"); // Let Hibernate create/drop schema
+    }
+
+    @Autowired
+    private DeviceRepository deviceRepository;
+
+    @BeforeEach
+    void setUp() {
+        deviceRepository.deleteAll();
+
+        Device apple1 = Device.builder().name("iPhone").brand("Apple").state(AVAILABLE).build();
+        Device apple2 = Device.builder().name("MacBook").brand("Apple").state(AVAILABLE).build();
+        Device samsung = Device.builder().name("Galaxy S24").brand("Samsung").state(AVAILABLE).build();
+
+        deviceRepository.saveAll(List.of(apple1, apple2, samsung));
+    }
+
+    @Test
+    @DisplayName("findByBrandIgnoreCase returns devices of exact brand")
+    void findByBrandIgnoreCase_shouldReturnDevicesForBrand() {
+        List<Device> result = deviceRepository.findByBrandIgnoreCase("Apple");
+
+        assertThat(result)
+                .hasSize(2)
+                .extracting(Device::getName)
+                .containsExactlyInAnyOrder("iPhone", "MacBook");
+    }
+
+    @Test
+    @DisplayName("findByBrandIgnoreCase is case-insensitive")
+    void findByBrandIgnoreCase_shouldBeCaseInsensitive() {
+        List<Device> result = deviceRepository.findByBrandIgnoreCase("apple");
+
+        assertThat(result)
+                .hasSize(2)
+                .extracting(Device::getBrand)
+                .allMatch(brand -> brand.equals("Apple")); // db stores original case
+    }
+
+    @Test
+    @DisplayName("findByBrandIgnoreCase returns empty list when no devices found")
+    void findByBrandIgnoreCase_shouldReturnEmptyListWhenNoMatch() {
+        List<Device> result = deviceRepository.findByBrandIgnoreCase("Nokia");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("findByBrandIgnoreCase returns only matching brand, even with multiple brands present")
+    void findByBrandIgnoreCase_shouldNotReturnOtherBrands() {
+        List<Device> result = deviceRepository.findByBrandIgnoreCase("Samsung");
+
+        assertThat(result)
+                .hasSize(1)
+                .first()
+                .satisfies(device -> {
+                    assertThat(device.getBrand()).isEqualTo("Samsung");
+                    assertThat(device.getName()).isEqualTo("Galaxy S24");
+                });
+    }
+}
