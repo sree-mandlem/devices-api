@@ -4,12 +4,14 @@ import com.company.devices.api.dto.DeviceCreateRequest;
 import com.company.devices.api.dto.DeviceResponse;
 import com.company.devices.service.DeviceService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import static org.springframework.http.HttpStatus.CREATED;
 
 @RestController
 @RequestMapping("/api/v1/devices")
-public class DeviceController {
+public class DeviceController implements DeviceApi {
 
     private final DeviceService service;
 
@@ -17,20 +19,21 @@ public class DeviceController {
         this.service = service;
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public DeviceResponse create(@Valid @RequestBody DeviceCreateRequest request) {
-        return service.create(request);
+    @Override
+    public ResponseEntity<DeviceResponse> create(@Valid @RequestBody DeviceCreateRequest request) {
+        DeviceResponse body = service.create(request);
+        return ResponseEntity.status(CREATED).body(body);
     }
 
-    @GetMapping("/{id}")
-    public DeviceResponse getById(@PathVariable Long id) {
-        return service.getById(id);
+    @Override
+    public ResponseEntity<DeviceResponse> getById(@PathVariable Long id) {
+        DeviceResponse body = service.getById(id);
+        return ResponseEntity.ok(body);
     }
 
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@PathVariable Long id) {
+    @Override
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

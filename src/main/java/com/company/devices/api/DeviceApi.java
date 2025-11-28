@@ -1,0 +1,59 @@
+package com.company.devices.api;
+
+import com.company.devices.api.dto.DeviceCreateRequest;
+import com.company.devices.api.dto.DeviceResponse;
+import com.company.devices.api.dto.ErrorResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RequestMapping("/api/v1/devices")
+public interface DeviceApi {
+
+    @Operation(summary = "Create a new device")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Device created successfully",
+                    content = @Content(schema = @Schema(implementation = DeviceResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PostMapping
+    ResponseEntity<DeviceResponse> create(
+            @Valid
+            @RequestBody(description = "Payload to create a new device", required = true)
+            @org.springframework.web.bind.annotation.RequestBody DeviceCreateRequest request
+    );
+
+    @Operation(summary = "Get a device by its ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Device retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = DeviceResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Device not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @GetMapping("/{id}")
+    ResponseEntity<DeviceResponse> getById(@PathVariable Long id);
+
+    @Operation(summary = "Delete a device by its ID")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Device deleted successfully"),
+            @ApiResponse(responseCode = "400", description = "Deletion not allowed for current device state",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Device not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @DeleteMapping("/{id}")
+    ResponseEntity<Void> delete(@PathVariable Long id);
+}
