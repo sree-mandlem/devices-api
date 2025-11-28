@@ -1,0 +1,7 @@
+spring:
+  application.name: devices-api
+
+  jpa:
+    properties:
+      hibernate:
+        format_sql: true
