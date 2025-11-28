@@ -2,6 +2,7 @@ package com.company.devices.api;
 
 import com.company.devices.api.dto.DeviceCreateRequest;
 import com.company.devices.api.dto.DeviceResponse;
+import com.company.devices.api.dto.DeviceUpdateRequest;
 import com.company.devices.api.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -56,4 +57,22 @@ public interface DeviceApi {
     })
     @DeleteMapping("/{id}")
     ResponseEntity<Void> delete(@PathVariable Long id);
+
+    @Operation(summary = "Update an existing device, but only when not in use.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Device updated successfully",
+                    content = @Content(schema = @Schema(implementation = DeviceResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Device not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PutMapping("/{id}")
+    ResponseEntity<DeviceResponse> update(
+            @PathVariable Long id,
+            @RequestBody(description = "Payload to update an existing device", required = true)
+            @Valid @org.springframework.web.bind.annotation.RequestBody DeviceUpdateRequest request
+    );
 }

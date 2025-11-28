@@ -2,6 +2,7 @@ package com.company.devices.api;
 
 import com.company.devices.api.dto.DeviceCreateRequest;
 import com.company.devices.api.dto.DeviceResponse;
+import com.company.devices.api.dto.DeviceUpdateRequest;
 import com.company.devices.domain.DeviceState;
 import com.company.devices.service.DeviceService;
 import jakarta.persistence.EntityNotFoundException;
@@ -23,9 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = DeviceController.class)
@@ -133,5 +132,80 @@ class DeviceControllerTest {
                 .andExpect(jsonPath("$.status", is(400)))
                 .andExpect(jsonPath("$.error", is("Bad Request")))
                 .andExpect(jsonPath("$.message", containsString("Cannot delete device")));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/devices/{id} should return 200 with updated device")
+    void update_shouldReturnUpdatedDevice() throws Exception {
+        long id = 50L;
+        var request = new DeviceUpdateRequest("Updated", "BrandX", DeviceState.AVAILABLE);
+        var response = new DeviceResponse(id, "Updated", "BrandX", DeviceState.AVAILABLE, now());
+        when(deviceService.update(eq(id), any(DeviceUpdateRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(put("/api/v1/devices/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id", is((int) id)))
+                .andExpect(jsonPath("$.name", is("Updated")))
+                .andExpect(jsonPath("$.brand", is("BrandX")))
+                .andExpect(jsonPath("$.state", is("AVAILABLE")));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/devices/{id} should return 400 when validation fails")
+    void update_shouldReturnBadRequestOnValidationError() throws Exception {
+        String invalidJson = """
+                    {
+                      "name": " ",
+                      "brand": "BrandX",
+                      "state": "AVAILABLE"
+                    }
+                    """;
+
+        mockMvc.perform(put("/api/v1/devices/{id}", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/devices/{id} should return 404 when EntityNotFoundException is thrown")
+    void update_shouldReturnNotFound() throws Exception {
+        long id = 404L;
+        var request = new DeviceUpdateRequest("Updated", "BrandX", DeviceState.AVAILABLE);
+        var message = "Retrieval failed. Entity not found with id: " + id;
+        when(deviceService.update(eq(id), any(DeviceUpdateRequest.class)))
+                .thenThrow(new EntityNotFoundException(message));
+
+        mockMvc.perform(put("/api/v1/devices/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status", is(404)))
+                .andExpect(jsonPath("$.error", is("Not Found")))
+                .andExpect(jsonPath("$.message", is(message)));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/devices/{id} should return 400 when service rejects name/brand change for IN_USE")
+    void update_shouldReturnBadRequestWhenBusinessRuleViolated() throws Exception {
+        long id = 400L;
+        var request = new DeviceUpdateRequest("New name", "BrandX", DeviceState.IN_USE);
+        var message = "Name and brand cannot be updated when device is IN_USE";
+        when(deviceService.update(eq(id), any(DeviceUpdateRequest.class)))
+                .thenThrow(new IllegalStateException(message));
+
+        mockMvc.perform(put("/api/v1/devices/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.error", is("Bad Request")))
+                .andExpect(jsonPath("$.message", containsString("Name and brand cannot be updated")));
     }
 }

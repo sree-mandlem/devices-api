@@ -2,6 +2,7 @@ package com.company.devices.api;
 
 import com.company.devices.api.dto.DeviceCreateRequest;
 import com.company.devices.api.dto.DeviceResponse;
+import com.company.devices.api.dto.DeviceUpdateRequest;
 import com.company.devices.service.DeviceService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -35,5 +36,14 @@ public class DeviceController implements DeviceApi {
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<DeviceResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody DeviceUpdateRequest request
+    ) {
+        DeviceResponse body = service.update(id, request);
+        return ResponseEntity.ok(body);
     }
 }

@@ -2,6 +2,7 @@ package com.company.devices.service;
 
 import com.company.devices.api.dto.DeviceCreateRequest;
 import com.company.devices.api.dto.DeviceResponse;
+import com.company.devices.api.dto.DeviceUpdateRequest;
 import com.company.devices.domain.Device;
 import com.company.devices.repository.DeviceRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -14,8 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static com.company.devices.domain.DeviceState.AVAILABLE;
-import static com.company.devices.domain.DeviceState.IN_USE;
+import static com.company.devices.domain.DeviceState.*;
 import static java.time.Instant.now;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -72,7 +72,7 @@ class DeviceServiceTest {
     @Test
     @DisplayName("getById() should throw EntityNotFoundException when entity is missing")
     void getById_shouldThrowWhenNotFound() {
-        Long id = 42L;
+        Long id = 404L;
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getById(id))
@@ -86,7 +86,7 @@ class DeviceServiceTest {
     @Test
     @DisplayName("delete() should throw EntityNotFoundException when entity is missing")
     void delete_shouldThrowWhenNotFound() {
-        Long id = 99L;
+        Long id = 404L;
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.delete(id))
@@ -124,4 +124,94 @@ class DeviceServiceTest {
         verify(repository, never()).delete(any());
     }
 
+    @Test
+    @DisplayName("update() should update fields when device is AVAILABLE(not IN_USE)")
+    void update_shouldModifyFieldsWhenAvailable() {
+        Long id = 11L;
+        var existing = Device.builder().id(id).name("Old name").brand("Old brand").state(AVAILABLE).build();
+        var request = new DeviceUpdateRequest("New name", "New brand", INACTIVE);
+        var expectedResponse = new DeviceResponse(id, "New name", "New brand", INACTIVE, now());
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(mapper.toResponse(existing)).thenReturn(expectedResponse);
+
+        var result = service.update(id, request);
+
+        assertThat(result).isEqualTo(expectedResponse);
+        assertThat(existing.getName()).isEqualTo("New name");
+        assertThat(existing.getBrand()).isEqualTo("New brand");
+        assertThat(existing.getState()).isEqualTo(INACTIVE);
+        verify(repository).findById(id);
+        verify(mapper).toResponse(existing);
+    }
+
+    @Test
+    @DisplayName("update() should update fields when device is INACTIVE(not IN_USE)")
+    void update_shouldModifyFieldsWhenInActive() {
+        Long id = 11L;
+        var existing = Device.builder().id(id).name("Old name").brand("Old brand").state(INACTIVE).build();
+        var request = new DeviceUpdateRequest("New name", "New brand", INACTIVE);
+        var expectedResponse = new DeviceResponse(id, "New name", "New brand", INACTIVE, now());
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(mapper.toResponse(existing)).thenReturn(expectedResponse);
+
+        var result = service.update(id, request);
+
+        assertThat(result).isEqualTo(expectedResponse);
+        assertThat(existing.getName()).isEqualTo("New name");
+        assertThat(existing.getBrand()).isEqualTo("New brand");
+        assertThat(existing.getState()).isEqualTo(INACTIVE);
+        verify(repository).findById(id);
+        verify(mapper).toResponse(existing);
+    }
+
+    @Test
+    @DisplayName("update() should throw EntityNotFoundException when entity is missing")
+    void update_shouldThrowWhenNotFound() {
+        Long id = 404L;
+        var request = new DeviceUpdateRequest("Name", "Brand", AVAILABLE);
+        when(repository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.update(id, request))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessageContaining("Retrieval failed")
+                .hasMessageContaining(String.valueOf(id));
+        verify(repository).findById(id);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("update() should allow updating only state when device is IN_USE")
+    void update_shouldAllowOnlyStateChangeWhenInUse() {
+        Long id = 20L;
+        var existing = Device.builder().id(id).name("Name").brand("Brand").state(IN_USE).build();
+        var request = new DeviceUpdateRequest("Name", "Brand", AVAILABLE);
+        var expectedResponse = new DeviceResponse(id, "Name", "Brand", AVAILABLE, now());
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        when(mapper.toResponse(existing)).thenReturn(expectedResponse);
+
+        var result = service.update(id, request);
+
+        assertThat(result).isEqualTo(expectedResponse);
+        assertThat(existing.getName()).isEqualTo("Name");
+        assertThat(existing.getBrand()).isEqualTo("Brand");
+        assertThat(existing.getState()).isEqualTo(AVAILABLE);
+        verify(repository).findById(id);
+        verify(mapper).toResponse(existing);
+    }
+
+    @Test
+    @DisplayName("update() should throw IllegalStateException when name or brand changes while IN_USE")
+    void update_shouldThrowWhenChangingNameOrBrandWhileInUse() {
+        Long id = 400L;
+        var existing = Device.builder().id(id).name("Locked name").brand("Locked brand").state(IN_USE).build();
+        var request = new DeviceUpdateRequest("New name", "Locked brand", IN_USE);
+
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.update(id, request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Name and brand cannot be updated when device is IN_USE");
+        verify(repository).findById(id);
+        verifyNoInteractions(mapper);
+    }
 }
