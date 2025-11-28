@@ -1,8 +1,6 @@
 package com.company.devices.api;
 
-import com.company.devices.api.dto.DeviceCreateRequest;
-import com.company.devices.api.dto.DeviceResponse;
-import com.company.devices.api.dto.DeviceUpdateRequest;
+import com.company.devices.api.dto.*;
 import com.company.devices.domain.DeviceState;
 import com.company.devices.service.DeviceService;
 import jakarta.persistence.EntityNotFoundException;
@@ -94,7 +92,7 @@ class DeviceControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/devices/{id} should return 404 when service throws EntityNotFoundException")
+    @DisplayName("GET /api/v1/devices/{id} should return 404 when device is not found")
     void getById_shouldReturnNotFound() throws Exception {
         long id = 99L;
         var message = "Retrieval failed. Entity not found with id: " + id;
@@ -172,7 +170,7 @@ class DeviceControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /api/v1/devices/{id} should return 404 when EntityNotFoundException is thrown")
+    @DisplayName("PUT /api/v1/devices/{id} should return 404 when device is not found")
     void update_shouldReturnNotFound() throws Exception {
         long id = 404L;
         var request = new DeviceUpdateRequest("Updated", "BrandX", DeviceState.AVAILABLE);
@@ -206,6 +204,64 @@ class DeviceControllerTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.status", is(400)))
                 .andExpect(jsonPath("$.error", is("Bad Request")))
-                .andExpect(jsonPath("$.message", containsString("Name and brand cannot be updated")));
+                .andExpect(jsonPath("$.message", is(message)));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/v1/devices/{id} should return 200 with the patched device")
+    void patch_shouldReturnUpdatedDevice() throws Exception {
+        long id = 50L;
+        var request = new DevicePatchRequest("Updated", "BrandX", DeviceState.AVAILABLE);
+        var response = new DeviceResponse(id, "Updated", "BrandX", DeviceState.AVAILABLE, now());
+        when(deviceService.patch(eq(id), any(DevicePatchRequest.class)))
+                .thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/devices/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id", is((int) id)))
+                .andExpect(jsonPath("$.name", is("Updated")))
+                .andExpect(jsonPath("$.brand", is("BrandX")))
+                .andExpect(jsonPath("$.state", is("AVAILABLE")));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/v1/devices/{id} should return 404 when device is not found")
+    void patch_shouldReturnNotFound() throws Exception {
+        long id = 404L;
+        var request = new DevicePatchRequest("Updated", "BrandX", DeviceState.AVAILABLE);
+        var message = "Retrieval failed. Entity not found with id: " + id;
+        when(deviceService.patch(eq(id), any(DevicePatchRequest.class)))
+                .thenThrow(new EntityNotFoundException(message));
+
+        mockMvc.perform(patch("/api/v1/devices/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status", is(404)))
+                .andExpect(jsonPath("$.error", is("Not Found")))
+                .andExpect(jsonPath("$.message", is(message)));
+    }
+
+    @Test
+    @DisplayName("PATCH /api/v1/devices/{id} should return 400 when service rejects name/brand change for IN_USE")
+    void patch_shouldReturnBadRequestWhenBusinessRuleViolated() throws Exception {
+        long id = 400L;
+        var request = new DevicePatchRequest("New name", "BrandX", DeviceState.IN_USE);
+        var message = "Name and brand cannot be updated when device is IN_USE";
+        when(deviceService.patch(eq(id), any(DevicePatchRequest.class)))
+                .thenThrow(new IllegalStateException(message));
+
+        mockMvc.perform(patch("/api/v1/devices/{id}", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.error", is("Bad Request")))
+                .andExpect(jsonPath("$.message", is(message)));
     }
 }

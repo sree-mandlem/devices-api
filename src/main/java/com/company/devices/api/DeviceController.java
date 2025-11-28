@@ -1,8 +1,6 @@
 package com.company.devices.api;
 
-import com.company.devices.api.dto.DeviceCreateRequest;
-import com.company.devices.api.dto.DeviceResponse;
-import com.company.devices.api.dto.DeviceUpdateRequest;
+import com.company.devices.api.dto.*;
 import com.company.devices.service.DeviceService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -44,6 +42,15 @@ public class DeviceController implements DeviceApi {
             @Valid @RequestBody DeviceUpdateRequest request
     ) {
         DeviceResponse body = service.update(id, request);
+        return ResponseEntity.ok(body);
+    }
+
+    @Override
+    public ResponseEntity<DeviceResponse> patch(
+            @PathVariable Long id,
+            @Valid @RequestBody DevicePatchRequest request
+    ) {
+        DeviceResponse body = service.patch(id, request);
         return ResponseEntity.ok(body);
     }
 }

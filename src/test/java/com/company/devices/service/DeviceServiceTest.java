@@ -1,8 +1,6 @@
 package com.company.devices.service;
 
-import com.company.devices.api.dto.DeviceCreateRequest;
-import com.company.devices.api.dto.DeviceResponse;
-import com.company.devices.api.dto.DeviceUpdateRequest;
+import com.company.devices.api.dto.*;
 import com.company.devices.domain.Device;
 import com.company.devices.repository.DeviceRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -38,22 +36,22 @@ class DeviceServiceTest {
     void create_shouldPersistAndReturnResponse() {
         var request = new DeviceCreateRequest("iPhone", "Apple", AVAILABLE);
         var device = Device.builder().name("iPhone").brand("Apple").state(AVAILABLE).build();
-        var savedEntity = Device.builder().id(1L).name("iPhone").brand("Apple").state(AVAILABLE).build();
+        var saved = Device.builder().id(1L).name("iPhone").brand("Apple").state(AVAILABLE).build();
         var response = new DeviceResponse(1L, "iPhone", "Apple", AVAILABLE, now());
         when(mapper.toEntity(request)).thenReturn(device);
-        when(repository.save(device)).thenReturn(savedEntity);
-        when(mapper.toResponse(savedEntity)).thenReturn(response);
+        when(repository.save(device)).thenReturn(saved);
+        when(mapper.toResponse(saved)).thenReturn(response);
 
         var result = service.create(request);
 
         assertThat(result).isEqualTo(response);
         verify(mapper).toEntity(request);
         verify(repository).save(device);
-        verify(mapper).toResponse(savedEntity);
+        verify(mapper).toResponse(saved);
     }
 
     @Test
-    @DisplayName("getById() should return mapped response when entity exists")
+    @DisplayName("getById() should return mapped response when device exists")
     void getById_shouldReturnResponseWhenFound() {
         Long id = 10L;
         var device = Device.builder().id(id).name("iPhone").brand("Apple").state(AVAILABLE).build();
@@ -70,35 +68,33 @@ class DeviceServiceTest {
     }
 
     @Test
-    @DisplayName("getById() should throw EntityNotFoundException when entity is missing")
+    @DisplayName("getById() should throw EntityNotFoundException when device is missing")
     void getById_shouldThrowWhenNotFound() {
         Long id = 404L;
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getById(id))
                 .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Retrieval failed")
-                .hasMessageContaining(String.valueOf(id));
+                .hasMessage("Device not found with id: " + id);
         verify(repository).findById(id);
         verifyNoInteractions(mapper);
     }
 
     @Test
-    @DisplayName("delete() should throw EntityNotFoundException when entity is missing")
+    @DisplayName("delete() should throw EntityNotFoundException when device is missing")
     void delete_shouldThrowWhenNotFound() {
         Long id = 404L;
         when(repository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.delete(id))
                 .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Deletion failed")
-                .hasMessageContaining(String.valueOf(id));
+                .hasMessage("Device not found with id: " + id);
         verify(repository).findById(id);
         verify(repository, never()).delete(any());
     }
 
     @Test
-    @DisplayName("delete() should delete entity when it is not IN_USE")
+    @DisplayName("delete() should delete device when it is not IN_USE")
     void delete_shouldRemoveEntityWhenNotInUse() {
         Long id = 3L;
         var device = Device.builder().id(id).name("iPhone").brand("Apple").state(AVAILABLE).build();
@@ -173,8 +169,7 @@ class DeviceServiceTest {
 
         assertThatThrownBy(() -> service.update(id, request))
                 .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Retrieval failed")
-                .hasMessageContaining(String.valueOf(id));
+                .hasMessage("Device not found with id: " + id);
         verify(repository).findById(id);
         verifyNoInteractions(mapper);
     }
@@ -210,8 +205,105 @@ class DeviceServiceTest {
 
         assertThatThrownBy(() -> service.update(id, request))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Name and brand cannot be updated when device is IN_USE");
+                .hasMessage("Name and brand cannot be updated when device is IN_USE");
         verify(repository).findById(id);
         verifyNoInteractions(mapper);
     }
+
+    @Test
+    @DisplayName("patch should update all provided fields when device is not IN_USE")
+    void patch_shouldUpdateAllProvidedFields_whenNotInUse() {
+        var id = 10L;
+        var existing = Device.builder().id(id).name("Old name").brand("Old brand").state(AVAILABLE).build();
+        var request = new DevicePatchRequest("New name", "New brand", IN_USE);
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        DeviceResponse expectedResponse = new DeviceResponse(id, "New name", "New brand", IN_USE, now());
+        when(mapper.toResponse(existing)).thenReturn(expectedResponse);
+
+        var result = service.patch(id, request);
+
+        assertThat(existing.getName()).isEqualTo("New name");
+        assertThat(existing.getBrand()).isEqualTo("New brand");
+        assertThat(existing.getState()).isEqualTo(IN_USE);
+        assertThat(result).isSameAs(expectedResponse);
+        verify(repository).findById(id);
+        verify(mapper).toResponse(existing);
+        verifyNoMoreInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("patch should update only fields that are non-null in request")
+    void patch_shouldUpdateOnlyNonNullFields() {
+        var id = 11L;
+        var existing = Device.builder().id(id).name("Name").brand("Brand").state(AVAILABLE).build();
+        var request = new DevicePatchRequest(null, null, IN_USE);
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        var expectedResponse = new DeviceResponse(id, "Name", "Brand", IN_USE, now());
+        when(mapper.toResponse(existing)).thenReturn(expectedResponse);
+
+        var result = service.patch(id, request);
+
+        assertThat(existing.getName()).isEqualTo("Name");
+        assertThat(existing.getBrand()).isEqualTo("Brand");
+        assertThat(existing.getState()).isEqualTo(IN_USE);
+        assertThat(result).isSameAs(expectedResponse);
+        verify(repository).findById(id);
+        verify(mapper).toResponse(existing);
+        verifyNoMoreInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("patch should throw when device is IN_USE and name or brand is changed")
+    void patch_shouldThrowWhenInUseAndNameOrBrandChanged() {
+        var id = 12L;
+        var existing = Device.builder().id(id).name("Name").brand("Brand").state(IN_USE).build();
+        var request = new DevicePatchRequest("Changed name", null, null);
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.patch(id, request))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Name and brand cannot be updated when device is IN_USE");
+        assertThat(existing.getName()).isEqualTo("Name");
+        assertThat(existing.getBrand()).isEqualTo("Brand");
+        assertThat(existing.getState()).isEqualTo(IN_USE);
+        verify(repository).findById(id);
+        verifyNoMoreInteractions(repository);
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
+    @DisplayName("patch should allow changing state when device is IN_USE but name and brand do not change")
+    void patch_shouldAllowStateChangeWhenInUseAndNameBrandUnchanged() {
+        var id = 13L;
+        var existing = Device.builder().id(id).name("Name").brand("Brand").state(IN_USE).build();
+        var request = new DevicePatchRequest(null, null, AVAILABLE);
+        when(repository.findById(id)).thenReturn(Optional.of(existing));
+        var expectedResponse = new DeviceResponse(id, "Name", "Brand", AVAILABLE, now());
+        when(mapper.toResponse(existing)).thenReturn(expectedResponse);
+
+        var result = service.patch(id, request);
+
+        assertThat(existing.getName()).isEqualTo("Name");
+        assertThat(existing.getBrand()).isEqualTo("Brand");
+        assertThat(existing.getState()).isEqualTo(AVAILABLE);
+        assertThat(result).isSameAs(expectedResponse);
+        verify(repository).findById(id);
+        verify(mapper).toResponse(existing);
+        verifyNoMoreInteractions(repository, mapper);
+    }
+
+    @Test
+    @DisplayName("patch should throw EntityNotFoundException when device does not exist")
+    void patch_shouldThrowWhenDeviceNotFound() {
+        var id = 999L;
+        when(repository.findById(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.patch(id, new DevicePatchRequest(null, null, null)))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Device not found with id: " + id);
+        verify(repository).findById(id);
+        verifyNoMoreInteractions(repository);
+        verifyNoInteractions(mapper);
+    }
+
 }

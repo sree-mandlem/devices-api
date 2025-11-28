@@ -2,7 +2,6 @@ package com.company.devices.service;
 
 import com.company.devices.api.dto.DeviceCreateRequest;
 import com.company.devices.api.dto.DeviceResponse;
-import com.company.devices.api.dto.DeviceUpdateRequest;
 import com.company.devices.domain.Device;
 import com.company.devices.domain.DeviceState;
 import org.junit.jupiter.api.DisplayName;
@@ -20,24 +19,8 @@ class DeviceMapperTest {
 
     @Test
     @DisplayName("toEntity() should map all fields from DeviceCreateRequest to Device except creationTime")
-    void toEntity_shouldMapFieldsFromDeviceCreateRequest() {
+    void toEntity_shouldMapFields() {
         var request = new DeviceCreateRequest("iPhone", "Apple", AVAILABLE);
-
-        var result = mapper.toEntity(request);
-
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).as("id should not be set by mapper").isNull();
-        assertThat(result.getName()).isEqualTo("iPhone");
-        assertThat(result.getBrand()).isEqualTo("Apple");
-        assertThat(result.getState()).isEqualTo(AVAILABLE);
-        // creationTime is set by @PrePersist, not by mapper
-        assertThat(result.getCreationTime()).as("creationTime should not be set by mapper").isNull();
-    }
-
-    @Test
-    @DisplayName("toEntity() should map all fields from D to DeviceUpdateRequest except creationTime")
-    void toEntity_shouldMapFieldsFromDeviceUpdateRequest() {
-        var request = new DeviceUpdateRequest("iPhone", "Apple", AVAILABLE);
 
         var result = mapper.toEntity(request);
 
@@ -75,8 +58,7 @@ class DeviceMapperTest {
     @Test
     @DisplayName("Mapper should handle null inputs gracefully by returning null")
     void mapper_shouldHandleNullInputs() {
-        assertThat(mapper.toEntity((DeviceCreateRequest) null)).isNull();
-        assertThat(mapper.toEntity((DeviceUpdateRequest) null)).isNull();
+        assertThat(mapper.toEntity((null))).isNull();
         assertThat(mapper.toResponse(null)).isNull();
     }
 }

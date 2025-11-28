@@ -1,9 +1,6 @@
 package com.company.devices.api;
 
-import com.company.devices.api.dto.DeviceCreateRequest;
-import com.company.devices.api.dto.DeviceResponse;
-import com.company.devices.api.dto.DeviceUpdateRequest;
-import com.company.devices.api.dto.ErrorResponse;
+import com.company.devices.api.dto.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -72,7 +69,25 @@ public interface DeviceApi {
     @PutMapping("/{id}")
     ResponseEntity<DeviceResponse> update(
             @PathVariable Long id,
-            @RequestBody(description = "Payload to update an existing device", required = true)
+            @RequestBody(description = "Payload to patch an existing device", required = true)
             @Valid @org.springframework.web.bind.annotation.RequestBody DeviceUpdateRequest request
+    );
+
+    @Operation(summary = "Patch update an existing device, but only when not in use.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Device patched successfully",
+                    content = @Content(schema = @Schema(implementation = DeviceResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Validation error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Device not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Unexpected server error",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    @PatchMapping("/{id}")
+    ResponseEntity<DeviceResponse> patch(
+            @PathVariable Long id,
+            @RequestBody(description = "Payload to update an existing device", required = true)
+            @Valid @org.springframework.web.bind.annotation.RequestBody DevicePatchRequest request
     );
 }
