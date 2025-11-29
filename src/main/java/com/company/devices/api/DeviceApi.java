@@ -1,6 +1,7 @@
 package com.company.devices.api;
 
 import com.company.devices.api.dto.*;
+import com.company.devices.domain.DeviceState;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -8,7 +9,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -94,7 +94,7 @@ public interface DeviceApi {
             @Valid @org.springframework.web.bind.annotation.RequestBody DevicePatchRequest request
     );
 
-    @Operation(summary = "Fetch devices filtered by brand")
+    @Operation(summary = "Fetch devices filtered by brand and/or state")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Devices retrieved successfully",
                     content = @Content(schema = @Schema(implementation = DeviceResponse.class))),
@@ -104,5 +104,8 @@ public interface DeviceApi {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     @GetMapping
-    ResponseEntity<List<DeviceResponse>> getByBrand(@NotNull @RequestParam("brand") String brand);
+    ResponseEntity<List<DeviceResponse>> getAll(
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) DeviceState state
+    );
 }

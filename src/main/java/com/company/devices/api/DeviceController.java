@@ -4,9 +4,9 @@ import com.company.devices.api.dto.DeviceCreateRequest;
 import com.company.devices.api.dto.DevicePatchRequest;
 import com.company.devices.api.dto.DeviceResponse;
 import com.company.devices.api.dto.DeviceUpdateRequest;
+import com.company.devices.domain.DeviceState;
 import com.company.devices.service.DeviceService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -61,8 +61,11 @@ public class DeviceController implements DeviceApi {
     }
 
     @Override
-    public ResponseEntity<List<DeviceResponse>> getByBrand(@NotNull @RequestParam("brand") String brand) {
-        var devicesByBrand = service.getByBrand(brand);
+    public ResponseEntity<List<DeviceResponse>> getAll(
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) DeviceState state
+    ) {
+        var devicesByBrand = service.getAll(brand, state);
         return ResponseEntity.ok(devicesByBrand);
     }
 }

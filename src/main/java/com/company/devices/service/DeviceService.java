@@ -93,17 +93,26 @@ public class DeviceService {
         return mapper.toResponse(device);
     }
 
-    public List<DeviceResponse> getByBrand(String brand) {
-        log.info("Retrieving devices by brand: {}", brand);
-
-        if (brand == null || brand.isBlank()) {
-            log.warn("Brand cannot be empty");
-            throw new IllegalArgumentException("Brand cannot be empty");
+    public List<DeviceResponse> getAll(String brand, DeviceState state) {
+        List<Device> devices;
+        if (brand != null && state != null) {
+            log.info("Retrieving devices by brand: {} and state:{}", brand, state);
+            devices = repository.findAll().stream()
+                    .filter(d -> d.getBrand().equalsIgnoreCase(brand)
+                            && d.getState() == state)
+                    .toList();
+        } else if (brand != null) {
+            log.info("Retrieving devices by brand: {}", brand);
+            devices = repository.findByBrandIgnoreCase(brand);
+        } else if (state != null) {
+            log.info("Retrieving devices by state: {}", state);
+            devices = repository.findByState(state);
+        } else {
+            log.info("Retrieving all devices");
+            devices = repository.findAll();
         }
 
-        return repository.findByBrandIgnoreCase(brand).stream()
-                .map(mapper::toResponse)
-                .toList();
+        return devices.stream().map(mapper::toResponse).toList();
     }
 
     private Device findDeviceOrThrow(Long id) {

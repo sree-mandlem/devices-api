@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -25,7 +26,11 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(BAD_REQUEST, ex.getMessage());
     }
 
-    @ExceptionHandler(value = {MethodArgumentNotValidException.class, MissingServletRequestParameterException.class})
+    @ExceptionHandler(value = {
+            MethodArgumentNotValidException.class,
+            MissingServletRequestParameterException.class,
+            MethodArgumentTypeMismatchException.class
+    })
     public ResponseEntity<ErrorResponse> handleValidationFailure(MethodArgumentNotValidException ex) {
         return buildErrorResponse(BAD_REQUEST, ex.getMessage());
     }

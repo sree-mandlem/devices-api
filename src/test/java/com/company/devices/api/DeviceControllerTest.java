@@ -18,11 +18,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Instant;
 import java.util.List;
 
 import static java.time.Instant.now;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -270,67 +270,147 @@ class DeviceControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/devices?brand=Apple returns list of devices")
-    void getByBrand_shouldReturnDevices() throws Exception {
-        var mockResponses = List.of(
-                new DeviceResponse(1L, "iPhone", "Apple", null, now()),
-                new DeviceResponse(2L, "MacBook", "Apple", null, now())
-        );
-        when(deviceService.getByBrand("Apple")).thenReturn(mockResponses);
+    @DisplayName("GET /api/v1/devices should return devices filtered by brand and state")
+    void getAll_shouldReturnDevicesFilteredByBrandAndState() throws Exception {
+        var response1 = new DeviceResponse(1L, "IPhone", "Apple", DeviceState.AVAILABLE, now());
+        var response2 = new DeviceResponse(2L, "MacBook", "Apple", DeviceState.AVAILABLE, now());
+
+        when(deviceService.getAll("Apple", DeviceState.AVAILABLE))
+                .thenReturn(List.of(response1, response2));
+
+        mockMvc.perform(get("/api/v1/devices")
+                        .param("brand", "Apple")
+                        .param("state", "AVAILABLE"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].id", is(1)))
+                .andExpect(jsonPath("$[0].name", is("IPhone")))
+                .andExpect(jsonPath("$[0].brand", is("Apple")))
+                .andExpect(jsonPath("$[0].state", is("AVAILABLE")))
+                .andExpect(jsonPath("$[1].id", is(2)))
+                .andExpect(jsonPath("$[1].name", is("MacBook")))
+                .andExpect(jsonPath("$[1].brand", is("Apple")))
+                .andExpect(jsonPath("$[1].state", is("AVAILABLE")));
+
+        verify(deviceService).getAll("Apple", DeviceState.AVAILABLE);
+        verifyNoMoreInteractions(deviceService);
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/devices should return devices matching given brand when only provided")
+    void getAll_shouldReturnDevicesMatchingBrandWhenOnlyBrandIsProvided() throws Exception {
+        var response1 = new DeviceResponse(1L, "IPhone", "Apple", DeviceState.AVAILABLE, Instant.now());
+        var response2 = new DeviceResponse(2L, "MacBook", "Apple", DeviceState.AVAILABLE, Instant.now());
+
+        when(deviceService.getAll("Apple", null))
+                .thenReturn(List.of(response1, response2));
 
         mockMvc.perform(get("/api/v1/devices")
                         .param("brand", "Apple"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].id").value(1L))
-                .andExpect(jsonPath("$[0].name").value("iPhone"))
-                .andExpect(jsonPath("$[0].brand").value("Apple"))
-                .andExpect(jsonPath("$[1].id").value(2L))
-                .andExpect(jsonPath("$[1].name").value("MacBook"))
-                .andExpect(jsonPath("$[1].brand").value("Apple"));
-
-        verify(deviceService).getByBrand(eq("Apple"));
+                // list size
+                .andExpect(jsonPath("$", hasSize(2)))
+                // first device
+                .andExpect(jsonPath("$[0].id", is(1)))
+                .andExpect(jsonPath("$[0].name", is("IPhone")))
+                .andExpect(jsonPath("$[0].brand", is("Apple")))
+                .andExpect(jsonPath("$[0].state", is("AVAILABLE")))
+                // second device
+                .andExpect(jsonPath("$[1].id", is(2)))
+                .andExpect(jsonPath("$[1].name", is("MacBook")))
+                .andExpect(jsonPath("$[1].brand", is("Apple")))
+                .andExpect(jsonPath("$[1].state", is("AVAILABLE")));
+        verify(deviceService).getAll("Apple", null);
         verifyNoMoreInteractions(deviceService);
     }
 
     @Test
-    @DisplayName("GET /api/v1/devices?brand=Samsung returns empty list when no devices found")
-    void getByBrand_shouldReturnEmptyList() throws Exception {
-        when(deviceService.getByBrand("Samsung")).thenReturn(List.of());
+    @DisplayName("GET /api/v1/devices should return devices matching given brand case insensitive when only provided")
+    void getAll_shouldReturnDevicesMatchingBrandCaseInsensitiveWhenOnlyBrandIsProvided() throws Exception {
+        // API receives lowercase "apple" but service/repo is case-insensitive
+        var response1 = new DeviceResponse(1L, "IPhone", "Apple", DeviceState.AVAILABLE, Instant.now());
+        var response2 = new DeviceResponse(2L, "MacBook", "Apple", DeviceState.AVAILABLE, Instant.now());
 
-        mockMvc.perform(get("/api/v1/devices")
-                        .param("brand", "Samsung"))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.length()").value(0));
-
-        verify(deviceService).getByBrand("Samsung");
-        verifyNoMoreInteractions(deviceService);
-    }
-
-    @Test
-    @DisplayName("GET /api/v1/devices?brand=apple is case-insensitive at service/repository level")
-    void getByBrand_caseInsensitive() throws Exception {
-        var mockResponses = List.of(new DeviceResponse(1L, "iPhone", "Apple", null, now()));
-        when(deviceService.getByBrand("apple")).thenReturn(mockResponses);
+        when(deviceService.getAll("apple", null))
+                .thenReturn(List.of(response1, response2));
 
         mockMvc.perform(get("/api/v1/devices")
                         .param("brand", "apple"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].brand").value("Apple"));
-
-        verify(deviceService).getByBrand("apple");
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].brand", is("Apple")))
+                .andExpect(jsonPath("$[1].brand", is("Apple")));
+        verify(deviceService).getAll("apple", null);
         verifyNoMoreInteractions(deviceService);
     }
 
     @Test
-    @DisplayName("GET /api/v1/devices without brand query parameter returns 400")
-    void getByBrand_missingBrand_shouldReturnBadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/devices"))
-                .andExpect(status().isBadRequest());
+    @DisplayName("GET /api/v1/devices should return devices matching given state when only provided")
+    void getAll_shouldReturnDevicesMatchingStateWhenOnlyStateIsProvided() throws Exception {
+        var response1 = new DeviceResponse(1L, "IPhone", "Apple", DeviceState.AVAILABLE, Instant.now());
+        var response2 = new DeviceResponse(2L, "Galaxy S24", "Samsung", DeviceState.AVAILABLE, Instant.now());
 
-        verifyNoInteractions(deviceService);
+        when(deviceService.getAll(null, DeviceState.AVAILABLE))
+                .thenReturn(List.of(response1, response2));
+
+        mockMvc.perform(get("/api/v1/devices")
+                        .param("state", "AVAILABLE"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$", hasSize(2)))
+                // both have the requested state
+                .andExpect(jsonPath("$[0].state", is("AVAILABLE")))
+                .andExpect(jsonPath("$[1].state", is("AVAILABLE")));
+        verify(deviceService).getAll(null, DeviceState.AVAILABLE);
+        verifyNoMoreInteractions(deviceService);
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/devices should return all devices when no filters are provided")
+    void getAll_shouldReturnAllDevicesWhenNoFilters() throws Exception {
+        var response1 = new DeviceResponse(1L, "IPhone", "Apple", null, now());
+        var response2 = new DeviceResponse(2L, "Galaxy S24", "Samsung", null, now());
+
+        when(deviceService.getAll(null, null))
+                .thenReturn(List.of(response1, response2));
+
+        mockMvc.perform(get("/api/v1/devices"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].id", is(1)))
+                .andExpect(jsonPath("$[0].name", is("IPhone")))
+                .andExpect(jsonPath("$[0].brand", is("Apple")))
+                .andExpect(jsonPath("$[0].state").doesNotExist())
+                .andExpect(jsonPath("$[1].id", is(2)))
+                .andExpect(jsonPath("$[1].name", is("Galaxy S24")))
+                .andExpect(jsonPath("$[1].brand", is("Samsung")))
+                .andExpect(jsonPath("$[1].state").doesNotExist());
+
+        verify(deviceService).getAll(null, null);
+        verifyNoMoreInteractions(deviceService);
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/devices should return 400 Bad Request when state enum value is invalid")
+    void getAll_shouldReturnBadRequestOnInvalidEnumValue() throws Exception {
+        mockMvc.perform(get("/api/v1/devices")
+                        .param("state", "INVALID_STATE"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/devices should return 500 when service throws an unexpected exception")
+    void getAll_shouldReturnInternalServerErrorWhenServiceFails() throws Exception {
+        when(deviceService.getAll("Apple", null))
+                .thenThrow(new RuntimeException("Unexpected failure"));
+
+        mockMvc.perform(get("/api/v1/devices").param("brand", "Apple"))
+                .andExpect(status().isInternalServerError());
+
+        verify(deviceService).getAll("Apple", null);
+        verifyNoMoreInteractions(deviceService);
     }
 }
