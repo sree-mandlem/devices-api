@@ -27,8 +27,7 @@
 * Lombok and MapStruct for code generation
 * Spring OpenAPI for documentation
 * Test Containers to test
-### Planned
-* Dockerize with `docker-compose` to containerize
+* Dockerize the app and db with `docker-compose` to containerize
 
 ### Testing Strategy
 * **Unit Tests** for coverage and validate business rules on service layer
